@@ -1,122 +1,132 @@
 import * as debounce from 'lodash.debounce';
 import { Notify } from 'notiflix/build/notiflix-notify-aio';
 import './css/styles.css';
+import { fetchCountries } from './fetchCountries';
 
-const DEBOUNCE_DELAY = 300;
+class CountrysInfo {
+  DEBOUNCE_DELAY = 300;
 
-const inputRef = document.querySelector('[id="search-box"]');
-const countryListRef = document.querySelector('.country-list');
-const countryInfoRef = document.querySelector('.country-info');
-
-inputRef.addEventListener('input', debounce(onInput, DEBOUNCE_DELAY));
-inputRef.addEventListener('keydown', onInputEnter);
-countryListRef.addEventListener('click', onClick);
-
-function onInput(event) {
-  console.log('inputRef ', inputRef);
-  const inputValue = event.target.value.trim();
-  if (!inputValue) {
-    return;
+  constructor({ input, countryList, countryInfo }) {
+    this.input = input;
+    this.countryList = countryList;
+    this.countryInfo = countryInfo;
   }
 
-  getCountries(inputValue);
-}
-
-function onInputEnter(event) {
-  if (event.code != 'Enter') {
-    return;
-  }
-  onInput(event);
-}
-
-function onClick(event) {
-  if (event.target.nodeName === 'UL') {
-    return;
+  init() {
+    this.addListeners();
   }
 
-  if (event.target.nodeName === 'IMG') {
-    // inputRef.value = event.target.parentNode.innerText;
-    getCountries(event.target.parentNode.innerText);
-    return;
+  addListeners() {
+    this.input.addEventListener(
+      'input',
+      debounce(this.onInput.bind(this), this.DEBOUNCE_DELAY)
+    );
+    this.input.addEventListener('keydown', this.onInputEnter.bind(this));
+    this.countryList.addEventListener('click', this.onClick.bind(this));
   }
 
-  // inputRef.value = event.target.innerText;
-  getCountries(event.target.innerText);
-}
-
-function getCountries(inputValue) {
-  fetchCountries(inputValue)
-    .then(getCountriesData)
-    .catch(error => {
-      Notify.failure(error.message);
-    });
-}
-
-function fetchCountries(name) {
-  return fetch(`https://restcountries.com/v3.1/name/${name}`).then(response => {
-    if (!response.ok) {
-      clearCountry(); //Clear
-      throw new Error('Oops, there is no country with that name');
+  onInput(event) {
+    const inputValue = event.target.value.trim();
+    if (!inputValue) {
+      this.clearCountry(); //Clear
+      return;
     }
 
-    return response.json();
-  });
-}
-
-function getCountriesData(data) {
-  console.log('data ', data);
-  if (data.length > 10) {
-    clearCountry(); //Clear
-    Notify.info('Too many matches found. Please enter a more specific name.');
-    return null;
-  }
-  if (data.length === 1) {
-    addCountryList(data);
-    addCountryInfo(data);
-    return null;
+    this.getCountries(inputValue);
   }
 
-  clearCountry(); //Clear
-  addCountryList(data);
-}
+  onInputEnter(event) {
+    if (event.code != 'Enter' && event.code != 'NumpadEnter') {
+      return;
+    }
+    this.onInput(event);
+  }
 
-function getCountryListMarkup(data) {
-  return data
-    .map(({ flags: { svg }, name: { official } }) => {
-      return `
+  onClick(event) {
+    if (event.target.nodeName === 'UL') {
+      return;
+    }
+
+    if (event.target.nodeName === 'IMG') {
+      this.getCountries(event.target.parentNode.innerText);
+      return;
+    }
+
+    this.getCountries(event.target.innerText);
+  }
+
+  getCountries(inputValue) {
+    fetchCountries(inputValue)
+      .then(this.getCountriesData.bind(this))
+      .catch(error => {
+        this.clearCountry(); //Clear
+        Notify.failure(error.message);
+      });
+  }
+
+  getCountriesData(data) {
+    // console.log('data ', data);
+    if (data.length > 10) {
+      this.clearCountry(); //Clear
+      Notify.info('Too many matches found. Please enter a more specific name.');
+      return null;
+    }
+    if (data.length === 1) {
+      this.addCountryList(data);
+      this.addCountryInfo(data);
+      return null;
+    }
+
+    this.clearCountry(); //Clear
+    this.addCountryList(data);
+  }
+
+  getCountryListMarkup(data) {
+    return data
+      .map(({ flags: { svg }, name: { official } }) => {
+        return `
         <li class="country-item">
           <img src="${svg}" width="60">
           <div>
           <p>${official}</p>
           </div>
         </li>`;
-    })
-    .join('');
-}
+      })
+      .join('');
+  }
 
-function getCountryInfoMarkup(data) {
-  return data
-    .map(({ name: { common }, capital, population, languages }) => {
-      return `
+  getCountryInfoMarkup(data) {
+    return data
+      .map(({ name: { common }, capital, population, languages }) => {
+        return `
         <div>
           <p>Common Name: <span>${common}</span></p>
           <p>Capital: <span>${capital}</span></p>
           <p>Population: <span>${population}</span></p>
           <p>Languages: <span>${Object.values(languages).join(', ')}</span></p>
         </div>`;
-    })
-    .join('');
+      })
+      .join('');
+  }
+
+  addCountryList(data) {
+    this.countryList.innerHTML = this.getCountryListMarkup(data);
+  }
+
+  addCountryInfo(data) {
+    this.countryInfo.innerHTML = this.getCountryInfoMarkup(data);
+  }
+
+  clearCountry() {
+    this.countryList.innerHTML = '';
+    this.countryInfo.innerHTML = '';
+  }
 }
 
-function addCountryList(data) {
-  countryListRef.innerHTML = getCountryListMarkup(data);
-}
+const refs = {
+  input: document.querySelector('[id="search-box"]'),
+  countryList: document.querySelector('.country-list'),
+  countryInfo: document.querySelector('.country-info'),
+};
 
-function addCountryInfo(data) {
-  countryInfoRef.innerHTML = getCountryInfoMarkup(data);
-}
-
-function clearCountry() {
-  countryListRef.innerHTML = '';
-  countryInfoRef.innerHTML = '';
-}
+new CountrysInfo(refs).init();
