@@ -9,7 +9,25 @@ const countryListRef = document.querySelector('.country-list');
 const countryInfoRef = document.querySelector('.country-info');
 
 inputRef.addEventListener('input', debounce(onInput, DEBOUNCE_DELAY));
+inputRef.addEventListener('keydown', onInputEnter);
 countryListRef.addEventListener('click', onClick);
+
+function onInput(event) {
+  console.log('inputRef ', inputRef);
+  const inputValue = event.target.value.trim();
+  if (!inputValue) {
+    return;
+  }
+
+  getCountries(inputValue);
+}
+
+function onInputEnter(event) {
+  if (event.code != 'Enter') {
+    return;
+  }
+  onInput(event);
+}
 
 function onClick(event) {
   if (event.target.nodeName === 'UL') {
@@ -17,23 +35,13 @@ function onClick(event) {
   }
 
   if (event.target.nodeName === 'IMG') {
-    inputRef.value = event.target.parentNode.innerText;
+    // inputRef.value = event.target.parentNode.innerText;
     getCountries(event.target.parentNode.innerText);
     return;
   }
 
-  inputRef.value = event.target.innerText;
+  // inputRef.value = event.target.innerText;
   getCountries(event.target.innerText);
-}
-
-function onInput(event) {
-  console.dir('inputRef ', inputRef);
-  const inputValue = event.target.value.trim();
-  if (!inputValue) {
-    return;
-  }
-
-  getCountries(inputValue);
 }
 
 function getCountries(inputValue) {
@@ -90,13 +98,12 @@ function getCountryInfoMarkup(data) {
   return data
     .map(({ name: { common }, capital, population, languages }) => {
       return `
-      <div>
+        <div>
           <p>Common Name: <span>${common}</span></p>
           <p>Capital: <span>${capital}</span></p>
           <p>Population: <span>${population}</span></p>
           <p>Languages: <span>${Object.values(languages).join(', ')}</span></p>
-          </div>
-              `;
+        </div>`;
     })
     .join('');
 }
